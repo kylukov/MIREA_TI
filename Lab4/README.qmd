@@ -1,0 +1,10 @@
+---
+title: "README"
+format: md
+author: aa-kylukov@yandex.ru
+---
+
+# Основы обработки данных с помощью R и Dplyr
+
+aa-kylukov@yandex.ru
+
