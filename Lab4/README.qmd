@@ -4,7 +4,192 @@ format: md
 author: aa-kylukov@yandex.ru
 ---
 
-# Основы обработки данных с помощью R и Dplyr
+# Исследование метаданных DNS трафика
 
 aa-kylukov@yandex.ru
 
+## Цель работы
+1. Зекрепить практические навыки использования языка программирования R для обработки данных
+2. Закрепить знания основных функций обработки данных экосистемы tidyverse языка R
+3. Закрепить навыки исследования метаданных DNS трафика
+
+
+## Исходные данные
+1. Ноутбук с ОС MacOS
+2. RStudio
+3. Интерпретатор языка R 4.5.1
+4. Доступ в интернет
+
+## Общий план выполнения
+1. Импортирт данных DNS – https:/ /storage.yandexcloud.net/dataset.ctfsec/dns.zip
+2. Добавьте пропущенные данные о структуре данных (назначении столбцов)
+3. Преобразуйте данные в столбцах в нужный формат
+4. Просмотрите общую структуру данных с помощью функции glimpse()
+4. Сколько участников информационного обмена в сети Доброй Организации?
+5. Какое соотношение участников обмена внутри сети и участников обращений к внешним ресурсам?
+6. Найдите топ-10 участников сети, проявляющих наибольшую сетевую активность.
+7. Найдите топ-10 доменов, к которым обращаются пользователи сети и соответственное количество обращений
+8. Опеределите базовые статистические характеристики (функция summary() ) интервала времени между последовательными обращениями к топ-10 доменам.
+9. Часто вредоносное программное обеспечение использует DNS канал в качестве канала управления, периодически отправляя запросы на подконтрольный злоумышленникам DNS сервер. По периодическим запросам на один и тот же домен можно выявить скрытый DNS канал. Есть ли такие IP адреса в исследуемом датасете?
+
+### Шаг 1-3. Импорт данных и добавление названия столбцов
+```{R}
+library(dplyr)
+library(readr)
+
+my_data <- read_tsv(
+  file = "dns.log",
+  col_names = FALSE,  # нет заголовков в файле
+  comment = "#",      # пропускать строки с #
+  show_col_types = FALSE
+)
+
+column_names <- c("ts", "uid", "id.orig_h", "id.orig_p", "id.resp_h", "id.resp_p", 
+                  "proto", "trans_id", "query", "qclass", "qclass_name", "qtype", 
+                  "qtype_name", "rcode", "rcode_name", "AA", "TC", "RD", "RA", 
+                  "Z", "answers", "TTLs", "rejected")
+
+colnames(my_data) <- column_names
+head(my_data)
+```
+
+### Шаг 4.1. Просмотр общей структуры данных с помощью glimpse()
+```{R}
+glimpse(my_data)
+```
+
+### Шаг 4.2. Просмотр количества участников информационного обмена всети Доброй Организации
+```{R}
+unique_source_ips <- unique(my_data$id.orig_h)
+unique_destination_ips <- unique(my_data$id.resp_h)
+
+# Объединяем все уникальные IP-адреса
+all_ips <- unique(c(unique_source_ips, unique_destination_ips))
+
+# Выводим результат
+cat("Количество участников информационного обмена:", length(all_ips), "\n")
+```
+
+### Шаг 5. Отношение  участников обмена внутри сети и участников обращений к внешним ресурсам
+```{R}
+internal_sources <- sum(grepl("^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)", all_ips))
+external_sources <- length(all_ips) - internal_sources
+internal_sources / external_sources
+```
+
+### Шаг 6. Найдите топ-10 участников сети, проявляющих наибольшую сетевую активность.
+```{R}
+my_data %>%
+  group_by(id.orig_h)%>%
+  count(sort = TRUE) %>%
+  as_tibble() %>%
+  head(10)
+```
+
+### Шаг 7. Найдите топ-10 доменов, к которым обращаются пользователи сети и соответственное количество обращений
+```{R}
+my_data %>%
+  group_by(query)%>%
+  count(sort = TRUE) %>%
+  as_tibble() %>%
+  head(10)
+```
+
+### Шаг 8. Опеределите базовые статистические характеристики (функция summary() ) интервала времени между последовательными обращениями к топ-10 доменам.
+```{R}
+library(dplyr)
+
+time_analysis <- my_data %>%
+  count(query, name = "total_requests") %>%
+  slice_max(total_requests, n = 10) %>%
+  inner_join(my_data, by = "query") %>%
+  group_by(query) %>%
+  arrange(ts, .by_group = TRUE) %>%
+  summarise(
+    requests = n(),
+    intervals = list(diff(sort(ts))),
+    .groups = 'drop'
+  ) %>%
+  # Вычисляем статистики
+  mutate(
+    min_int = sapply(intervals, min),
+    q1_int = sapply(intervals, quantile, 0.25),
+    median_int = sapply(intervals, median),
+    mean_int = sapply(intervals, mean),
+    q3_int = sapply(intervals, quantile, 0.75),
+    max_int = sapply(intervals, max),
+    sd_int = sapply(intervals, sd)
+  ) %>%
+  select(-intervals) %>%
+  arrange(median_int)
+
+print(time_analysis)
+```
+
+### Шаг 9. Поиск IP-адресов с периодическими запросами на один домен (из топ-10 доменов)
+```{R}
+library(dplyr)
+
+# Находим IP-адреса с периодическими запросами к топ-10 доменам
+periodic_ips <- my_data %>%
+  # Фильтруем только топ-10 доменов
+  semi_join(
+    count(., query) %>% slice_max(n, n = 10),
+    by = "query"
+  ) %>%
+  # Группируем по IP и домену
+  group_by(id.orig_h, query) %>%
+  filter(n() >= 5) %>%  # Минимум 5 запросов для анализа периодичности
+  arrange(ts) %>%
+  summarise(
+    request_count = n(),
+    time_intervals = list(diff(ts)),
+    # Анализ периодичности
+    mean_interval = mean(diff(ts)),
+    sd_interval = sd(diff(ts)),
+    cv = sd_interval / mean_interval,  # Коэффициент вариации
+    # Статистика регулярности
+    min_interval = min(diff(ts)),
+    max_interval = max(diff(ts)),
+    range_ratio = max_interval / min_interval,
+    .groups = 'drop'
+  ) %>%
+  # Фильтруем по признакам периодичности
+  filter(
+    cv < 0.5,           # Низкий коэффициент вариации = высокая регулярность
+    request_count >= 10, # Достаточно запросов для анализа
+    range_ratio < 10     # Относительно стабильный интервал
+  ) %>%
+  arrange(cv, request_count)  # Сортируем по регулярности
+
+cat("IP-адреса с периодическими запросами на топ-10 доменов:\n")
+print(periodic_ips)
+
+# Детальный анализ подозрительных IP
+if(nrow(periodic_ips) > 0) {
+  cat("\nДЕТАЛЬНЫЙ АНАЛИЗ ПОДОЗРИТЕЛЬНЫХ IP:\n")
+  
+  for(i in 1:nrow(periodic_ips)) {
+    ip <- periodic_ips$id.orig_h[i]
+    domain <- periodic_ips$query[i]
+    
+    cat(sprintf("\n%d. IP: %s -> Домен: %s\n", i, ip, domain))
+    cat(sprintf("   Запросов: %d, Средний интервал: %.1f сек, CV: %.3f\n",
+                periodic_ips$request_count[i],
+                periodic_ips$mean_interval[i],
+                periodic_ips$cv[i]))
+    
+  }
+} else {
+  cat("Периодические запросы не обнаружены.\n")
+}
+```
+
+## Оценка результата
+	•	Освоены базовые возможности R и пакета dplyr для работы с данными.
+	•	Закреплены навыки фильтрации, сортировки, группировки и агрегации данных.
+	•	Получен практический опыт анализа сетевого DNS-трафика.
+
+## Вывод
+
+Работа показала, как с помощью R и dplyr можно эффективно обрабатывать и исследовать данные DNS-трафика, выявлять активных участников сети и потенциально подозрительные IP-адреса.

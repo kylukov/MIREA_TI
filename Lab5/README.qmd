@@ -1,0 +1,8 @@
+---
+title: "README"
+format: md
+author: aa-kylukov@yandex.ru
+---
+
+# Исследование метаданных DNS трафика
+
