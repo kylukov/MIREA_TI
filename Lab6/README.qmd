@@ -1,0 +1,7 @@
+---
+title: "README"
+format: md
+author: aa-kylukov@yandex.ru
+---
+
+# Исследование информации о состоянии беспроводных сетей
