@@ -29,30 +29,30 @@ author: aa-kylukov@yandex.ru
 
 ### Шаг 1. Настройка подключения DataLense
 #### Создание подключения 
-![](screenshots/make1.png)
+![](Screenshots/make1.png)
 
 #### Настройка параметров подключения 
-![](screenshots/make2.png)
-![](screenshots/make_name.png)
+![](Screenshots/make2.png)
+![](Screenshots/make_name.png)
 
 ### Шаг 2. Создание датасета в DataLense
-![](screenshots/dataset.png)
+![](Screenshots/dataset.png)
 
 ### Шаг 3. Создание графиков
 #### Создание круговой диаграммы
-![](screenshots/intext.png)
-![](screenshots/circle.png)
+![](Screenshots/intext.png)
+![](Screenshots/circle.png)
 
 #### Создание столбчатой диаграммы
-![](screenshots/tr.png)
-![](screenshots/tr2.png)
+![](Screenshots/tr.png)
+![](Screenshots/tr2.png)
 
 #### Создание линейного графика
-![](screenshots/time1.png)
-![](screenshots/time2.png)
+![](Screenshots/time1.png)
+![](Screenshots/time2.png)
 
 ### Шаг 4. Создание дашборда
-![](screenshots/result.png)
+![](Screenshots/result.png)
 Ссылка на дашборд - https://datalens.ru/rbt1wpklldloc-dashboard-kulikov
 
 ## Оценка результата и вывод
