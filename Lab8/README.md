@@ -58,8 +58,10 @@ aa-kylukov@yandex.ru
 
 ### Шаг 4. Создание дашборда
 
-![](Screenshots/result.png) Ссылка на дашборд -
-https://datalens.ru/rbt1wpklldloc-dashboard-kulikov
+![](Screenshots/result.png) 
+
+[Ссылка на итоговый дашборд](https://datalens.ru/rbt1wpklldloc-dashboard-kulikov)
+
 
 ## Оценка результата и вывод
 
